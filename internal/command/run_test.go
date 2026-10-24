@@ -2,7 +2,10 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"slices"
+	"syscall"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -196,5 +199,15 @@ func Test_parseFilesFromString(t *testing.T) {
 				t.Errorf("parseFilesFromString() = %q, want %q", result, tt.want)
 			}
 		})
+	}
+}
+
+func Test_interruptSignals(t *testing.T) {
+	signals := interruptSignals()
+
+	for _, want := range []os.Signal{os.Interrupt, syscall.SIGTERM} {
+		if !slices.Contains(signals, want) {
+			t.Errorf("interruptSignals() = %v, want it to contain %v", signals, want)
+		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/evilmartians/lefthook/v2/internal/config"
@@ -253,6 +254,18 @@ func shouldFailOnChangesDiff(fromArg *bool, fromHook *bool) bool {
 	return ok
 }
 
+// interruptSignals returns the signals that should stop the running hook
+// gracefully, so hidden unstaged changes get restored. SIGHUP is skipped when
+// it's ignored (e.g. under nohup) to keep that behavior.
+func interruptSignals() []os.Signal {
+	signals := []os.Signal{os.Interrupt, syscall.SIGTERM}
+	if !signal.Ignored(syscall.SIGHUP) {
+		signals = append(signals, syscall.SIGHUP)
+	}
+
+	return signals
+}
+
 func (l *Lefthook) runHook(
 	ctx context.Context,
 	hook *config.Hook,
@@ -260,7 +273,7 @@ func (l *Lefthook) runHook(
 	exLogger *logger.ExecutionLogger,
 	opts run.Options,
 ) error {
-	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
+	ctx, stop := signal.NotifyContext(ctx, interruptSignals()...)
 	defer stop()
 
 	startTime := time.Now()
